@@ -1,0 +1,86 @@
+---
+title: "QualityLifts, My JHU Machine Learning Project"
+author: "Serge"
+date: "9/27/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Overview
+In this project, our goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. We then attempt to predict the appropriate category of the 'classe' variable for the 20 observations. 
+
+More information here:  http://groupware.les.inf.puc-rio.br/har.  
+
+Thanks to the authors for sharing the data!  (Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013)  Read more:  http://groupware.les.inf.puc-rio.br/har#collaborators#ixzz60jjEnoVf) 
+
+#Read in data and load packages
+```{r}
+library('caret')
+library('rattle')
+library('rpart')
+library('rpart.plot')
+library('dplyr')
+
+testing <- read.csv('pml-testing.csv')
+training <- read.csv('pml-training.csv')
+```
+
+# Cleaning
+
+Eliminate variables with very little variance:
+```{r}
+#For Training
+NZV <- nearZeroVar(training, saveMetrics = TRUE)
+trainingslim <- training[, !NZV$nzv]
+
+#For Testing
+NZV <- nearZeroVar(testing, saveMetrics = TRUE)
+testingslim <- testing[, !NZV$nzv]
+```
+
+Eliminate index variable
+```{r}
+trainingslim <- trainingslim[-1]
+testingslim <- testingslim[-1]
+```
+
+a large proportion of variables have an overwhelming # of NA's
+```{r}
+#Run this line if you want to see them visually:
+#summary(trainingslim)
+
+#Lots of variables with 19,216 NA's, which is 97.93%  Let's eliminate columns with more than 95% NA's from consideration:
+
+BigNA <- as.character(vector())
+
+for (i in 1:ncol(trainingslim)) {
+  ifelse(sum(is.na(trainingslim[, i]))/nrow(trainingslim) > 0.95, BigNA <- c(BigNA, names(trainingslim[i])), BigNA)
+}
+
+#edit training set
+trainingslim <- trainingslim %>% dplyr::select(-BigNA)
+
+#the 'nearZeroVar process already eliminated these variables from testingslim
+```
+
+#Modeling
+Trees and Random Forest models
+
+```{r}
+#Trees
+modFitDT <- rpart(classe ~ ., data = trainingslim, method = 'class')
+
+predDT <- predict(modFitDT, testingslim, type = 'class')
+
+fancyRpartPlot(modFitDT)
+```
+
+
+The equivalent of the confusion matrix occurs in the quiz.  I predicted 90% correct.
+
+
+
+
